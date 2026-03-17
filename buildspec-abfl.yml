@@ -1,0 +1,36 @@
+version: 0.2
+
+env:
+  variables:
+    VITE_REACT_APP_ENV: "abfl"
+    VITE_REACT_APP_API_URL: "https://ahcz2nmspg.execute-api.ap-south-1.amazonaws.com/v1/api/v1"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo "Installing YARN dependencies"
+      - yarn
+      
+  pre_build:
+    commands:
+      - echo "Pre-build phase complete"
+      
+  build:
+    commands:
+      - echo "Starting build process"
+      - yarn build
+
+  post_build:
+    commands:
+      - echo "Copying build output to S3 bucket"
+      # Copy the entire dist directory to S3
+      - aws s3 cp --recursive ./dist s3://policy-portal-dev-fe/
+      
+      # Cache-control for index.html (to ensure fresh loading)
+      - aws s3 cp --cache-control="max-age=0, no-cache, no-store, must-revalidate" ./dist/index.html s3://policy-portal-dev-fe/
+      
+      # CloudFront cache invalidation for critical files
+      - aws cloudfront create-invalidation --distribution-id E3B3Y92KXLHJ1A --paths /index.html /service-worker.js
+      

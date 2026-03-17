@@ -1,0 +1,58 @@
+version: 0.2
+
+env:
+  variables:
+    VITE_REACT_APP_API_URL: "https://g8qx0ndej1.execute-api.ap-south-1.amazonaws.com/v1/api/v1"
+    VITE_REACT_APP_ENV: "abfl"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo "Installing YARN dependencies"
+      - yarn install --force
+
+  pre_build:
+    commands:
+      - echo "Pre-build phase complete"
+
+  build:
+    commands:
+      - echo "Starting build process"
+      - yarn build
+
+  post_build:
+    commands:
+      - echo "Removing existing files from S3"
+      - aws s3 rm s3://abfl-prod-policy-fe/ --recursive
+
+      - echo "Uploading index.html with no-cache"
+      - aws s3 cp ./dist/index.html s3://abfl-prod-policy-fe/index.html --cache-control "max-age=0, no-cache, no-store, must-revalidate" --content-type "text/html"
+
+      - echo "Uploading JavaScript files with correct MIME type"
+      - |
+        find ./dist -name "*.js" | while read file; do
+          aws s3 cp "$file" "s3://abfl-prod-policy-fe/${file#./dist/}" --content-type "application/javascript" --cache-control "max-age=31536000, public";
+        done
+
+      - echo "Uploading CSS files with correct MIME type"
+      - |
+        find ./dist -name "*.css" | while read file; do
+          aws s3 cp "$file" "s3://abfl-prod-policy-fe/${file#./dist/}" --content-type "text/css" --cache-control "max-age=31536000, public";
+        done
+
+      - echo "Uploading source maps with correct MIME type"
+      - |
+        find ./dist -name "*.map" | while read file; do
+          aws s3 cp "$file" "s3://abfl-prod-policy-fe/${file#./dist/}" --content-type "application/json" --cache-control "max-age=31536000, public";
+        done
+
+      - echo "Uploading remaining static assets"
+      - |
+        find ./dist -type f ! -name "*.html" ! -name "*.js" ! -name "*.css" ! -name "*.map" | while read file; do
+          aws s3 cp "$file" "s3://abfl-prod-policy-fe/${file#./dist/}" --cache-control "max-age=31536000, public";
+        done
+
+      - echo "Invalidating entire CloudFront cache"
+      - aws cloudfront create-invalidation --distribution-id E2SSS4GHE9LDZG --paths "/*"

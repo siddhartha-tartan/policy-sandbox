@@ -1,0 +1,70 @@
+#  Template NodeJS build
+
+#  This template allows you to validate your NodeJS code.
+#  The workflow allows running tests and code linting on the default branch.
+
+# image: node:20
+
+# clone:
+#   depth: full               # SonarCloud needs full history to assign issues properly
+
+# definitions:
+#   # services:
+#   #   docker:
+#   #     memory: 3072
+#   caches:
+#     sonar: ~/.sonar/cache    # Caching SonarCloud artifacts will speed up your build
+#     # node: ~/.npm             # Caching Node modules for faster builds
+#   steps:
+#     - step: &build-test-sonarcloud
+#         name: Install, Build, Test and Analyze on SonarCloud
+#         caches:
+#           - sonar
+#           # - node
+#         size: 2x
+#         script:
+#           - yarn install       # Install dependencies
+#           - yarn build         # Build the React app
+#           # - yarn test --coverage # Run tests (make sure coverage reports are generated)
+#           - pipe: sonarsource/sonarcloud-scan:3.0.0
+
+# pipelines:
+#   branches:
+#     master:
+#       - step: *build-test-sonarcloud
+#   pull-requests:
+#     '**':
+#       - step: *build-test-sonarcloud
+
+
+image: node:18 # Choose an image matching your project needs
+
+clone:
+  depth: full              # SonarQube Cloud scanner needs the full history to assign issues properly
+
+definitions:
+  services:
+    docker:
+      memory: 3072
+  caches:
+    sonar: ~/.sonar/cache  # Caching SonarQube Cloud artifacts will speed up your build
+    node: ~/.npm 
+  steps:
+    - step: &build-test-sonarcloud
+        name: Build, test and analyze on SonarQube Cloud
+        size: 2x
+        caches:
+          - node         # See https://confluence.atlassian.com/bitbucket/caching-dependencies-895552876.html
+          - sonar
+        script:
+          - yarn install
+          - NODE_OPTIONS="--max-old-space-size=8192" yarn build            # Build your project and run
+          - pipe: sonarsource/sonarcloud-scan:3.0.0
+
+pipelines:                 # More info here: https://confluence.atlassian.com/bitbucket/configure-bitbucket-pipelines-yml-792298910.html
+  branches:
+    master:
+      - step: *build-test-sonarcloud
+  pull-requests:
+    '**':
+      - step: *build-test-sonarcloud

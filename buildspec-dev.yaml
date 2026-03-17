@@ -1,0 +1,36 @@
+version: 0.2
+
+env:
+  variables:
+    VITE_REACT_APP_API_URL: "https://akmgaiuvm1.execute-api.ap-south-1.amazonaws.com/v1/api/v1"
+    VITE_REACT_APP_ENV: "dev"
+    VITE_REACT_APP_MAKER_CHECKER_API_URL: "https://tyv414l2wd.execute-api.ap-south-1.amazonaws.com/v1/api/v1/maker-checker"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo Installing Yarn globally
+      - npm install -g yarn
+      - echo Installing project dependencies
+      - yarn install
+
+  build:
+    commands:
+      - set -e
+      - echo Build started on `date`
+      - echo "VITE_REACT_APP_API_URL=$VITE_REACT_APP_API_URL"
+      - NODE_OPTIONS="--max-old-space-size=4096" yarn build
+
+  post_build:
+    commands:
+      - echo "Uploading files to S3..."
+      - aws s3 sync ./dist s3://policy-sandbox/ --delete
+      - if [ -f "./dist/index.html" ]; then aws s3 cp ./dist/index.html s3://policy-sandbox/index.html --cache-control "max-age=0, no-cache, no-store, must-revalidate" --metadata-directive REPLACE; else echo "⚠️ index.html missing, build likely failed"; fi
+      - aws cloudfront create-invalidation --distribution-id E3IGHBBZ695I7C --paths "/index.html" "/service-worker.js"
+
+artifacts:
+  files:
+    - "**/*"
+  base-directory: dist

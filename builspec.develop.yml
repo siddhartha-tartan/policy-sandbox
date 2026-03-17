@@ -1,0 +1,41 @@
+version: 0.2
+
+env:
+  variables:
+    VITE_REACT_APP_API_URL: "https://810sz0mrif.execute-api.ap-south-1.amazonaws.com/v1/api/v1"
+    VITE_REACT_APP_ENV: "develop"  
+    VITE_REACT_APP_MAKER_CHECKER_API_URL : "https://equfsg7vj7.execute-api.ap-south-1.amazonaws.com/v1/api/v1/maker-checker"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+  pre_build:
+    commands:
+      - echo Installing NPM dependencies
+      - npm install -g yarn
+      - yarn install
+  build:
+    commands:
+      - echo Build started on `date`
+      - yarn build
+  post_build:
+    commands:
+      # Copy the contents of ./dist to S3
+      - aws s3 cp --recursive ./dist s3://development-policy-fe/
+      
+      # Set the cache-control headers for index.html to prevent browser caching
+      - >  
+        aws s3 cp
+        --cache-control="max-age=0, no-cache, no-store, must-revalidate"
+        ./dist/index.html s3://development-policy-fe/
+      
+      # Invalidate CloudFront cache for index.html and service-worker.js
+      - >
+        aws cloudfront create-invalidation --distribution-id E193V2BXYI4YYF 
+        --paths /index.html /service-worker.js
+
+artifacts:
+  files:
+    - "**/*"
+  base-directory: dist

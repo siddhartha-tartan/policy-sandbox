@@ -1,0 +1,37 @@
+version: 0.2
+
+env:
+  variables:
+    VITE_REACT_APP_API_URL: "https://cral77w0u4.execute-api.ap-south-1.amazonaws.com/v1/api/v1"
+    VITE_REACT_APP_ENV: "stage"
+    VITE_REACT_APP_MAKER_CHECKER_API_URL : "https://equfsg7vj7.execute-api.ap-south-1.amazonaws.com/v1/api/v1/maker-checker"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo "Installing YARN dependencies"
+      - yarn install --force
+      
+  pre_build:
+    commands:
+      - echo "Pre-build phase complete"
+      
+  build:
+    commands:
+      - echo "Starting build process"
+      - yarn build
+
+  post_build:
+    commands:
+      - echo "Copying build output to S3 bucket"
+      # Copy the entire dist directory to S3
+      - aws s3 cp --recursive ./dist s3://demo-for-policy-portal/
+      
+      # Cache-control for index.html (to ensure fresh loading)
+      - aws s3 cp --cache-control="max-age=0, no-cache, no-store, must-revalidate" ./dist/index.html s3://demo-for-policy-portal/
+      
+      # CloudFront cache invalidation for critical files
+      - aws cloudfront create-invalidation --distribution-id E2NHFMIGIZAYBG --paths /index.html /service-worker.js
+      

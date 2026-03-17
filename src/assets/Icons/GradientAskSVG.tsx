@@ -1,0 +1,87 @@
+const GradientAskSVG = ({ ...props }) => (
+  <svg
+    width={18}
+    height={19}
+    viewBox="0 0 18 19"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <g clipPath="url(#clip0_675_7606)">
+      <path
+        d="M9 10.3438C9.46599 10.3438 9.84375 9.96599 9.84375 9.5C9.84375 9.03401 9.46599 8.65625 9 8.65625C8.53401 8.65625 8.15625 9.03401 8.15625 9.5C8.15625 9.96599 8.53401 10.3438 9 10.3438Z"
+        fill="url(#paint0_linear_675_7606)"
+      />
+      <path
+        d="M5.90625 10.3438C6.37224 10.3438 6.75 9.96599 6.75 9.5C6.75 9.03401 6.37224 8.65625 5.90625 8.65625C5.44026 8.65625 5.0625 9.03401 5.0625 9.5C5.0625 9.96599 5.44026 10.3438 5.90625 10.3438Z"
+        fill="url(#paint1_linear_675_7606)"
+      />
+      <path
+        d="M12.0938 10.3438C12.5597 10.3438 12.9375 9.96599 12.9375 9.5C12.9375 9.03401 12.5597 8.65625 12.0938 8.65625C11.6278 8.65625 11.25 9.03401 11.25 9.5C11.25 9.96599 11.6278 10.3438 12.0938 10.3438Z"
+        fill="url(#paint2_linear_675_7606)"
+      />
+      <path
+        d="M3.17461 16.6796C3.09268 16.7485 2.99278 16.7926 2.88665 16.8068C2.78052 16.8209 2.67257 16.8044 2.57548 16.7593C2.47838 16.7142 2.39618 16.6423 2.33852 16.5521C2.28087 16.4619 2.25016 16.3571 2.25 16.25V5C2.25 4.85082 2.30926 4.70774 2.41475 4.60225C2.52024 4.49676 2.66332 4.4375 2.8125 4.4375H15.1875C15.3367 4.4375 15.4798 4.49676 15.5852 4.60225C15.6907 4.70774 15.75 4.85082 15.75 5V14C15.75 14.1492 15.6907 14.2923 15.5852 14.3977C15.4798 14.5032 15.3367 14.5625 15.1875 14.5625H5.625L3.17461 16.6796Z"
+        stroke="url(#paint3_linear_675_7606)"
+        strokeWidth={1.125}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </g>
+    <defs>
+      <linearGradient
+        id="paint0_linear_675_7606"
+        x1={8.15625}
+        y1={8.42188}
+        x2={11.0644}
+        y2={8.68196}
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop stopColor="#3762DD" />
+        <stop offset={1} stopColor="#1D3577" />
+      </linearGradient>
+      <linearGradient
+        id="paint1_linear_675_7606"
+        x1={5.0625}
+        y1={8.42188}
+        x2={7.97066}
+        y2={8.68196}
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop stopColor="#3762DD" />
+        <stop offset={1} stopColor="#1D3577" />
+      </linearGradient>
+      <linearGradient
+        id="paint2_linear_675_7606"
+        x1={11.25}
+        y1={8.42188}
+        x2={14.1582}
+        y2={8.68196}
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop stopColor="#3762DD" />
+        <stop offset={1} stopColor="#1D3577" />
+      </linearGradient>
+      <linearGradient
+        id="paint3_linear_675_7606"
+        x1={2.25}
+        y1={2.71887}
+        x2={25.4802}
+        y2={4.98543}
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop stopColor="#3762DD" />
+        <stop offset={1} stopColor="#1D3577" />
+      </linearGradient>
+      <clipPath id="clip0_675_7606">
+        <rect
+          width={18}
+          height={18}
+          fill="white"
+          transform="translate(0 0.5)"
+        />
+      </clipPath>
+    </defs>
+  </svg>
+);
+export default GradientAskSVG;

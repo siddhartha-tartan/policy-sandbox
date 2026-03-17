@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: "Manrope", sans-serif;
+}
+
+/* Custom scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.custom-scrollbar:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #FEFEFF;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #D0D5DD;
+  border-radius: 10px;
+  transition: background-color 0.3s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #98A2B3;
+}
+
+/* Hide scrollbar when not scrolling */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+.custom-scrollbar:hover {
+  scrollbar-color: #D0D5DD #FEFEFF;
+}
+
+.shimmer-background {
+  background: linear-gradient(120deg, #0074ff, #9735ff80, #0074ff);
+  background-size: 200% 200%;
+  animation: shimmer 3s infinite;
+}
+
+.shimmer-hr-background {
+  background: linear-gradient(120deg, #7d152b, #b3475d80, #7d152b);
+  background-size: 200% 200%;
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  50% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.popover-trigger:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.popover-trigger {
+  outline: none;
+}
+
+.popover-trigger:focus-visible {
+  outline: none;
+}
+
+/* PolicySelector Animations - Exact implementation from PDF */
+
+
+/* Status-based styling classes using existing color system */
+.policy-active {
+  @apply text-success-600 bg-success-50 border-success-100;
+}
+
+.policy-processing {
+  @apply text-warning-600 bg-warning-50 border-warning-100;
+}
+
+.policy-failed {
+  @apply text-error-600 bg-error-50 border-error-100;
+}
+
+.policy-disabled {
+  @apply opacity-40 cursor-not-allowed;
+}

@@ -1,0 +1,6 @@
+Type,Variable Name (Case sensitive),Description
+Integer,IntVariable,
+Char,CharVariable,
+Boolean,BoolVariable,
+Date,DateVariable,
+String,StringVariable,

@@ -1,0 +1,129 @@
+.custom-tabs-container {
+  display: flex;
+  width: 100%;
+  padding: 0px;
+  background-color: transparent;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 12px 8px 12px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 20px;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* --- Default Variant --- */
+.custom-tabs-container.variant-default {
+  gap: 8px;
+  border-bottom: none;
+}
+
+.variant-default .tab-item {
+  flex: 1;
+  font-weight: 700;
+  color: #176fc1;
+}
+
+.variant-default .tab-item:hover:not(.disabled) {
+  background-color: #f7fafc;
+}
+
+.variant-default .tab-item.active {
+  border-bottom-color: #176fc1;
+}
+
+/* --- Pill Variant --- */
+.custom-tabs-container.variant-pill {
+  border-bottom: none;
+}
+
+.variant-pill .tab-item {
+  min-width: 100px;
+  font-weight: 500;
+  color: #727a90;
+}
+
+.variant-pill .tab-item:hover:not(.disabled) {
+  background-color: #f7fafc;
+  color: #4a5568;
+}
+
+.variant-pill .tab-item.active {
+  font-weight: 700 !important;
+  color: #176fc1 !important;
+  border-bottom: 2px solid #176fc1 !important;
+}
+
+/* --- Boxed Variant --- */
+.custom-tabs-container.variant-boxed {
+  background-color: #f3f4f6;
+  padding: 4px;
+  border-radius: 8px;
+  border: none;
+  gap: 0;
+}
+
+.variant-boxed .tab-item {
+  flex: 1;
+  border-radius: 6px;
+  color: #64748b;
+  border: none !important;
+  padding: 8px 12px;
+  margin: 0;
+  font-weight: 500;
+  transition: all 0.1s ease;
+  background-color: transparent;
+}
+
+.variant-boxed .tab-item:hover:not(.disabled):not(.active) {
+  background-color: rgba(0, 0, 0, 0.04);
+  color: #475569;
+}
+
+.variant-boxed .tab-item.active {
+  background-color: #ffffff;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  font-weight: 600 !important;
+}
+
+.variant-boxed .tab-item:not(:last-child) {
+  border-right: none;
+}
+
+/* ==========================================================================
+   DISABLED STATE (High Specificity to Override Variants)
+   ==========================================================================
+*/
+.custom-tabs-container .tab-item.disabled {
+  cursor: not-allowed !important;
+  opacity: 0.5 !important;
+  color: #a0aec0 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  pointer-events: none;
+}
+
+.custom-tabs-container .tab-item.disabled:hover,
+.custom-tabs-container .tab-item.disabled:focus,
+.custom-tabs-container .tab-item.disabled:active {
+  background-color: transparent !important;
+  color: #a0aec0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}

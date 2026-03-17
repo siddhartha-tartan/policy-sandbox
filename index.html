@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap"
+      rel="stylesheet"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Policy Portal</title>
+    <style id="antiClickjack">
+      body {
+        display: none !important;
+      }
+    </style>
+    <script type="text/javascript">
+      (function () {
+        if (self === top) {
+          var style = document.getElementById("antiClickjack");
+          if (style) style.parentNode.removeChild(style);
+          return;
+        }
+        var companyDomainRegex =
+          /^https?:\/\/([a-z0-9-]+\.)*tartanhq\.com(\/|$)/i;
+        if (document.referrer && companyDomainRegex.test(document.referrer)) {
+          var style = document.getElementById("antiClickjack");
+          if (style) style.parentNode.removeChild(style);
+        } else {
+          top.location = self.location;
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

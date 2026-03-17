@@ -1,0 +1,13 @@
+/* Add the thin-scrollbar style */
+.thinScrollbar::-webkit-scrollbar {
+    width: 6px !important;
+  }
+  
+  .thinScrollbar::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+  
+  .thinScrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+    border-radius: 20px !important;
+  } 

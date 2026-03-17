@@ -1,0 +1,5 @@
+Employee ID (Mandatory),Name (Mandatory),Mobile (Mandatory),Email (Mandatory),Role (Mandatory),Product Category (Mandatory),PolyGPT,AI Assessments,Compare,Is_Active
+THQ0001,Pramey Jain,9988772212,pramey@tartanhq.com,Query User,"HR Policies,Mortgages,Insurance",TRUE,FALSE,TRUE,TRUE
+THQ0002,Meet Semlani,9988772213,meet@tartanhq.com,User,HR Policies,TRUE,FALSE,FALSE,FALSE
+THQ0001,Pramey Jain,9988772212,pramey1@tartanhq.com,Policy Manager,HR Policies,FALSE,TRUE,TRUE,TRUE
+,,,,Assessment User,,,,

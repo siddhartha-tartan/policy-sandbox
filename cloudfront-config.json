@@ -1,0 +1,67 @@
+{
+  "Comment": "CloudFront configuration for SPA with proper MIME type handling",
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "S3-policy-portal-origin",
+    "ViewerProtocolPolicy": "redirect-to-https",
+    "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+    "Compress": true,
+    "AllowedMethods": {
+      "Quantity": 2,
+      "Items": ["GET", "HEAD"],
+      "CachedMethods": {
+        "Quantity": 2,
+        "Items": ["GET", "HEAD"]
+      }
+    }
+  },
+  "CacheBehaviors": {
+    "Quantity": 2,
+    "Items": [
+      {
+        "PathPattern": "/assets/*",
+        "TargetOriginId": "S3-policy-portal-origin",
+        "ViewerProtocolPolicy": "redirect-to-https",
+        "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+        "Compress": true,
+        "TTL": 31536000,
+        "AllowedMethods": {
+          "Quantity": 2,
+          "Items": ["GET", "HEAD"]
+        }
+      },
+      {
+        "PathPattern": "*.css",
+        "TargetOriginId": "S3-policy-portal-origin",
+        "ViewerProtocolPolicy": "redirect-to-https",
+        "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+        "Compress": true,
+        "TTL": 31536000,
+        "AllowedMethods": {
+          "Quantity": 2,
+          "Items": ["GET", "HEAD"]
+        }
+      }
+    ]
+  },
+  "CustomErrorResponses": {
+    "Quantity": 2,
+    "Items": [
+      {
+        "ErrorCode": 404,
+        "ResponsePagePath": "/index.html",
+        "ResponseCode": "200",
+        "ErrorCachingMinTTL": 0
+      },
+      {
+        "ErrorCode": 403,
+        "ResponsePagePath": "/index.html",
+        "ResponseCode": "200",
+        "ErrorCachingMinTTL": 0
+      }
+    ]
+  },
+  "PriceClass": "PriceClass_All",
+  "Enabled": true,
+  "HttpVersion": "http2",
+  "IsIPV6Enabled": true
+} 
