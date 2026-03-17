@@ -77,7 +77,8 @@ function InsightCard({
       border="1px solid"
       borderColor={isInvestigating ? "#3762DD" : "#E4E7EC"}
       _hover={isInvestigating ? {} : { borderColor: "#D1D5DB", shadow: "sm" }}
-      transition="all 0.2s"
+      transitionProperty="border-color, box-shadow"
+      transitionDuration="0.2s"
       position="relative"
     >
       {/* Investigating overlay */}

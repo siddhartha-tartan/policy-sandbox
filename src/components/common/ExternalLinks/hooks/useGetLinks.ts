@@ -1,8 +1,10 @@
 export interface ILink {
   id: string;
-  name: string;
+  link_name: string;
   url: string;
-  description?: string;
+  description: string;
+  is_active: boolean;
+  edit?: boolean;
 }
 
 export const getLinksKey = `/links`;

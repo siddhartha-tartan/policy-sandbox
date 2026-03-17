@@ -10,7 +10,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FiCheck,
   FiX,
-  FiClock,
   FiArrowLeft,
   FiPlus,
   FiMinus,
@@ -87,8 +86,6 @@ function ChangeCard({
       cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [isScrollTarget]);
-
-  const isDecided = change.status !== "pending";
 
   return (
     <Box
