@@ -22,16 +22,31 @@
     </style>
     <script type="text/javascript">
       (function () {
+        var style = document.getElementById("antiClickjack");
+        var allowRendering = function () {
+          if (style && style.parentNode) {
+            style.parentNode.removeChild(style);
+          }
+        };
+
         if (self === top) {
-          var style = document.getElementById("antiClickjack");
-          if (style) style.parentNode.removeChild(style);
+          allowRendering();
           return;
         }
-        var companyDomainRegex =
-          /^https?:\/\/([a-z0-9-]+\.)*tartanhq\.com(\/|$)/i;
-        if (document.referrer && companyDomainRegex.test(document.referrer)) {
-          var style = document.getElementById("antiClickjack");
-          if (style) style.parentNode.removeChild(style);
+
+        var isEmbed =
+          new URLSearchParams(window.location.search).get("embed") === "1";
+        var allowedReferrerRegexes = [
+          /^https?:\/\/([a-z0-9-]+\.)*tartanhq\.com(\/|$)/i,
+          /^http:\/\/localhost(:\d+)?(\/|$)/i,
+          /^http:\/\/127\.0\.0\.1(:\d+)?(\/|$)/i,
+        ];
+        var allowedReferrer = allowedReferrerRegexes.some(function (regex) {
+          return document.referrer && regex.test(document.referrer);
+        });
+
+        if (isEmbed || allowedReferrer) {
+          allowRendering();
         } else {
           top.location = self.location;
         }
