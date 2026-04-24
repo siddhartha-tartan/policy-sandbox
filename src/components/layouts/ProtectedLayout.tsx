@@ -58,17 +58,27 @@ const ProtectedLayout: React.FC = () => {
   );
 
   const isAttempt = location.pathname.includes("attempt");
+  const embedParam =
+    new URLSearchParams(location.search).get("embed") === "1";
+  if (embedParam && typeof window !== "undefined") {
+    window.sessionStorage.setItem("embedMode", "1");
+  }
+  const isEmbed =
+    embedParam ||
+    (typeof window !== "undefined" &&
+      window.sessionStorage.getItem("embedMode") === "1");
+  const hideChrome = isAttempt || isEmbed;
   useGetLoanCategories();
   useGetCurrentUser();
 
   return (
     <Flex w="100vw" h="100vh" overflow="hidden" flexDir={"column"}>
       <Flex w={"full"} h={"full"} zIndex={1} opacity={1}>
-        {!isAttempt && userType && (
+        {!hideChrome && userType && (
           <SideBar menuOptions={filteredMenuOptions} />
         )}
         <Flex flex="1" flexDir="column" overflow="hidden">
-          {!isAttempt && userType && <Header />}
+          {!hideChrome && userType && <Header />}
           <Box
             overflow="auto"
             flex="1"
