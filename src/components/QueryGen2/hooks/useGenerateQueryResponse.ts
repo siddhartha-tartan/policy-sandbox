@@ -53,7 +53,7 @@ export default function useGenerateQueryResponse(shouldNavigate = false) {
     setIsLoading(true);
 
     setTimeout(() => {
-      const mockResponse = executeQuery(payload.user_query);
+      const mockResponse = executeQuery(payload.user_query, payload.query_history);
       const newMessage: ChatMessage = {
         query: currentQueryRef.current,
         message: mockResponse.message,

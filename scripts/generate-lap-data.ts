@@ -19,6 +19,12 @@
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
+import {
+  BASELINE_POLICY,
+  evaluatePolicy,
+  getPrimaryRejectionReason,
+  PolicySnapshot,
+} from "../src/components/QueryGen2/utils/policyEngine";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -76,6 +82,11 @@ function addDays(d: Date, days: number): Date {
 }
 function fmt(d: Date): string {
   return d.toISOString().split("T")[0];
+}
+
+function yearsBetween(startDate: Date, endDate: Date): number {
+  const diffMs = endDate.getTime() - startDate.getTime();
+  return Math.max(0, diffMs / (365.25 * 24 * 60 * 60 * 1000));
 }
 
 // ─── Reference data ─────────────────────────────────────────────────────────
@@ -245,10 +256,10 @@ function computeEMI(principal: number, annualRate: number, tenureMonths: number)
 
 interface Branch { branch_id: string; branch_name: string; city: string; state: string; region: string; branch_type: string; opened_date: string; }
 interface Employee { employee_id: string; employee_name: string; designation: string; branch_id: string; joining_date: string; is_active: boolean; }
-interface Customer { customer_id: string; first_name: string; last_name: string; date_of_birth: string; gender: string; pan_number: string; phone_number: string; email: string; city: string; state: string; pincode: string; employment_type: string; employer_name: string; annual_income: number; created_at: string; }
+interface Customer { customer_id: string; first_name: string; last_name: string; date_of_birth: string; gender: string; pan_number: string; phone_number: string; email: string; city: string; state: string; pincode: string; employment_type: string; employer_name: string; annual_income: number; employment_start_date: string; created_at: string; }
 interface Property { property_id: string; customer_id: string; property_type: string; property_sub_type: string; address: string; city: string; state: string; pincode: string; carpet_area_sqft: number; market_value: number; registered_value: number; construction_year: number; ownership_type: string; }
-interface CreditBureauReport { report_id: string; customer_id: string; bureau_name: string; score: number; report_date: string; existing_loans_count: number; total_outstanding: number; delinquency_flag: string; dpd_max_12m: number; }
-interface LoanApplication { application_id: string; customer_id: string; property_id: string; employee_id: string; branch_id: string; applied_amount: number; purpose: string; application_date: string; status: string; rejection_reason: string | null; approved_date: string | null; }
+interface CreditBureauReport { report_id: string; customer_id: string; bureau_name: string; score: number; report_date: string; existing_loans_count: number; inquiries_last_6m: number; inquiries_last_12m: number; total_outstanding: number; delinquency_flag: string; dpd_max_12m: number; }
+interface LoanApplication { application_id: string; customer_id: string; property_id: string; employee_id: string; branch_id: string; applied_amount: number; purpose: string; application_date: string; applicant_age_years: number; applicant_annual_income: number; applicant_employment_tenure_years: number; applicant_bureau_score: number; applicant_inquiries_last_6m: number; applicant_total_outstanding: number; applicant_foir: number; applicant_ltv: number; status: string; rejection_reason: string | null; approved_date: string | null; }
 interface Loan { loan_id: string; application_id: string; customer_id: string; sanctioned_amount: number; disbursed_amount: number; interest_rate: number; tenure_months: number; emi_amount: number; disbursement_date: string; maturity_date: string; ltv_ratio: number; loan_status: string; npa_date: string | null; closure_date: string | null; }
 interface Disbursement { disbursement_id: string; loan_id: string; tranche_number: number; amount: number; disbursement_date: string; disbursement_mode: string; bank_account_number: string; bank_name: string; }
 interface EMIRecord { emi_id: string; loan_id: string; emi_number: number; due_date: string; emi_amount: number; principal_component: number; interest_component: number; payment_date: string | null; payment_amount: number | null; status: string; dpd: number; penalty_amount: number; }
@@ -322,6 +333,20 @@ function generate() {
 
     const dob = randomDate(new Date("1960-01-01"), new Date("1998-12-31"));
     const createdAt = randomDate(DATA_START, DATA_END);
+    const ageAtCreate = yearsBetween(dob, createdAt);
+    const maxWorkingYears = Math.max(1, Math.floor(ageAtCreate - 18));
+    const employmentTenureYears = Math.min(
+      maxWorkingYears,
+      empType === "Salaried"
+        ? randInt(1, 18)
+        : empType === "Self-Employed Professional"
+        ? randInt(1, 16)
+        : randInt(1, 22)
+    );
+    const employmentStartDate = addMonths(
+      createdAt,
+      -employmentTenureYears * 12 - randInt(0, 10)
+    );
 
     customers.push({
       customer_id: `CUST${String(i + 1).padStart(5, "0")}`,
@@ -338,6 +363,7 @@ function generate() {
       employment_type: empType,
       employer_name: employer,
       annual_income: income,
+      employment_start_date: fmt(employmentStartDate),
       created_at: fmt(createdAt),
     });
   }
@@ -392,6 +418,7 @@ function generate() {
     );
     const clampedScore = Math.max(300, Math.min(900, score));
     const existingLoans = clampedScore > 750 ? randInt(0, 3) : clampedScore > 650 ? randInt(1, 5) : randInt(2, 8);
+    const inquiriesLast6m = clampedScore > 760 ? randInt(0, 2) : clampedScore > 680 ? randInt(1, 4) : randInt(3, 8);
     const outstanding = existingLoans * randInt(100000, 2000000);
 
     creditReports.push({
@@ -401,6 +428,8 @@ function generate() {
       score: clampedScore,
       report_date: cust.created_at,
       existing_loans_count: existingLoans,
+      inquiries_last_6m: inquiriesLast6m,
+      inquiries_last_12m: inquiriesLast6m + randInt(0, 5),
       total_outstanding: outstanding,
       delinquency_flag: clampedScore < 650 ? (seededRandom() > 0.4 ? "Y" : "N") : (seededRandom() > 0.9 ? "Y" : "N"),
       dpd_max_12m: clampedScore < 650 ? randInt(0, 180) : clampedScore < 750 ? randInt(0, 30) : 0,
@@ -424,22 +453,48 @@ function generate() {
     const ltv = 0.4 + seededRandom() * 0.3; // 40-70% LTV
     const appliedAmount = Math.round((prop.market_value * ltv) / 100000) * 100000;
     const appDate = randomDate(new Date(cust.created_at), addMonths(new Date(cust.created_at), 2));
+    const applicantAgeYears = Number(yearsBetween(new Date(cust.date_of_birth), appDate).toFixed(1));
+    const applicantEmploymentTenureYears = Number(
+      yearsBetween(new Date(cust.employment_start_date), appDate).toFixed(1)
+    );
+    const monthlyIncome = cust.annual_income / 12;
+    const existingMonthlyObligation =
+      cbr.existing_loans_count * randInt(1500, 6000) +
+      cbr.total_outstanding * (0.0005 + seededRandom() * 0.0008);
+    const indicativeEmi = computeEMI(appliedAmount, 11.25, 180);
+    const applicantFoir = Number(
+      (
+        (existingMonthlyObligation + indicativeEmi) /
+        Math.max(monthlyIncome, 1)
+      ).toFixed(2)
+    );
+    const applicantLtv = Number((appliedAmount / prop.market_value).toFixed(2));
+    const applicationSnapshot: PolicySnapshot = {
+      application_id: `APP${String(i + 1).padStart(5, "0")}`,
+      age_years: applicantAgeYears,
+      annual_income: cust.annual_income,
+      employment_tenure_years: applicantEmploymentTenureYears,
+      bureau_score: cbr.score,
+      inquiries_last_6m: cbr.inquiries_last_6m,
+      total_outstanding: cbr.total_outstanding,
+      foir: applicantFoir,
+      ltv: applicantLtv,
+    };
+    const evaluation = evaluatePolicy(applicationSnapshot, BASELINE_POLICY);
 
     let status: string;
     let rejectionReason: string | null = null;
     let approvedDate: string | null = null;
 
-    if (cbr.score < 600) {
-      status = pickWeighted(["Rejected", "Withdrawn"], [85, 15]);
-      rejectionReason = status === "Rejected" ? pick(REJECTION_REASONS) : null;
-    } else if (cbr.score < 680) {
-      status = pickWeighted(["Approved", "Rejected", "Under Review", "Disbursed"], [15, 40, 15, 30]);
-      rejectionReason = status === "Rejected" ? pick(REJECTION_REASONS) : null;
-      if (status === "Approved" || status === "Disbursed") approvedDate = fmt(addDays(appDate, randInt(10, 30)));
+    if (evaluation.eligible) {
+      status = pickWeighted(["Disbursed", "Approved", "Under Review"], [68, 20, 12]);
+      if (status === "Approved" || status === "Disbursed") approvedDate = fmt(addDays(appDate, randInt(7, 25)));
     } else {
-      status = pickWeighted(["Disbursed", "Approved", "Under Review", "Submitted", "Rejected", "Withdrawn"], [55, 15, 10, 8, 8, 4]);
-      rejectionReason = status === "Rejected" ? pick(REJECTION_REASONS) : null;
-      if (["Approved", "Disbursed"].includes(status)) approvedDate = fmt(addDays(appDate, randInt(7, 25)));
+      status = pickWeighted(["Rejected", "Under Review", "Withdrawn"], [82, 10, 8]);
+      rejectionReason =
+        status === "Rejected"
+          ? getPrimaryRejectionReason(evaluation) || pick(REJECTION_REASONS)
+          : null;
     }
 
     loanApplications.push({
@@ -451,6 +506,14 @@ function generate() {
       applied_amount: appliedAmount,
       purpose: pick(LOAN_PURPOSES),
       application_date: fmt(appDate),
+      applicant_age_years: applicantAgeYears,
+      applicant_annual_income: cust.annual_income,
+      applicant_employment_tenure_years: applicantEmploymentTenureYears,
+      applicant_bureau_score: cbr.score,
+      applicant_inquiries_last_6m: cbr.inquiries_last_6m,
+      applicant_total_outstanding: cbr.total_outstanding,
+      applicant_foir: applicantFoir,
+      applicant_ltv: applicantLtv,
       status,
       rejection_reason: rejectionReason,
       approved_date: approvedDate,
@@ -707,10 +770,10 @@ const tsContent = `// AUTO-GENERATED — Do not edit manually.
 
 export interface Branch { branch_id: string; branch_name: string; city: string; state: string; region: string; branch_type: string; opened_date: string; }
 export interface Employee { employee_id: string; employee_name: string; designation: string; branch_id: string; joining_date: string; is_active: boolean; }
-export interface Customer { customer_id: string; first_name: string; last_name: string; date_of_birth: string; gender: string; pan_number: string; phone_number: string; email: string; city: string; state: string; pincode: string; employment_type: string; employer_name: string; annual_income: number; created_at: string; }
+export interface Customer { customer_id: string; first_name: string; last_name: string; date_of_birth: string; gender: string; pan_number: string; phone_number: string; email: string; city: string; state: string; pincode: string; employment_type: string; employer_name: string; annual_income: number; employment_start_date: string; created_at: string; }
 export interface Property { property_id: string; customer_id: string; property_type: string; property_sub_type: string; address: string; city: string; state: string; pincode: string; carpet_area_sqft: number; market_value: number; registered_value: number; construction_year: number; ownership_type: string; }
-export interface CreditBureauReport { report_id: string; customer_id: string; bureau_name: string; score: number; report_date: string; existing_loans_count: number; total_outstanding: number; delinquency_flag: string; dpd_max_12m: number; }
-export interface LoanApplication { application_id: string; customer_id: string; property_id: string; employee_id: string; branch_id: string; applied_amount: number; purpose: string; application_date: string; status: string; rejection_reason: string | null; approved_date: string | null; }
+export interface CreditBureauReport { report_id: string; customer_id: string; bureau_name: string; score: number; report_date: string; existing_loans_count: number; inquiries_last_6m: number; inquiries_last_12m: number; total_outstanding: number; delinquency_flag: string; dpd_max_12m: number; }
+export interface LoanApplication { application_id: string; customer_id: string; property_id: string; employee_id: string; branch_id: string; applied_amount: number; purpose: string; application_date: string; applicant_age_years: number; applicant_annual_income: number; applicant_employment_tenure_years: number; applicant_bureau_score: number; applicant_inquiries_last_6m: number; applicant_total_outstanding: number; applicant_foir: number; applicant_ltv: number; status: string; rejection_reason: string | null; approved_date: string | null; }
 export interface Loan { loan_id: string; application_id: string; customer_id: string; sanctioned_amount: number; disbursed_amount: number; interest_rate: number; tenure_months: number; emi_amount: number; disbursement_date: string; maturity_date: string; ltv_ratio: number; loan_status: string; npa_date: string | null; closure_date: string | null; }
 export interface Disbursement { disbursement_id: string; loan_id: string; tranche_number: number; amount: number; disbursement_date: string; disbursement_mode: string; bank_account_number: string; bank_name: string; }
 export interface EMIRecord { emi_id: string; loan_id: string; emi_number: number; due_date: string; emi_amount: number; principal_component: number; interest_component: number; payment_date: string | null; payment_amount: number | null; status: string; dpd: number; penalty_amount: number; }
@@ -749,7 +812,7 @@ export const LAP_SCHEMA = {
     {
       name: "customers",
       description: "LAP borrower/applicant master data",
-      columns: ["customer_id", "first_name", "last_name", "date_of_birth", "gender", "pan_number", "phone_number", "email", "city", "state", "pincode", "employment_type", "employer_name", "annual_income", "created_at"],
+      columns: ["customer_id", "first_name", "last_name", "date_of_birth", "gender", "pan_number", "phone_number", "email", "city", "state", "pincode", "employment_type", "employer_name", "annual_income", "employment_start_date", "created_at"],
       row_count: ${stats.customers},
     },
     {
@@ -761,13 +824,13 @@ export const LAP_SCHEMA = {
     {
       name: "credit_bureau_reports",
       description: "CIBIL/Experian/CRIF credit scores and bureau data",
-      columns: ["report_id", "customer_id", "bureau_name", "score", "report_date", "existing_loans_count", "total_outstanding", "delinquency_flag", "dpd_max_12m"],
+      columns: ["report_id", "customer_id", "bureau_name", "score", "report_date", "existing_loans_count", "inquiries_last_6m", "inquiries_last_12m", "total_outstanding", "delinquency_flag", "dpd_max_12m"],
       row_count: ${stats.credit_bureau_reports},
     },
     {
       name: "loan_applications",
       description: "LAP application tracking from submission to decision",
-      columns: ["application_id", "customer_id", "property_id", "employee_id", "branch_id", "applied_amount", "purpose", "application_date", "status", "rejection_reason", "approved_date"],
+      columns: ["application_id", "customer_id", "property_id", "employee_id", "branch_id", "applied_amount", "purpose", "application_date", "applicant_age_years", "applicant_annual_income", "applicant_employment_tenure_years", "applicant_bureau_score", "applicant_inquiries_last_6m", "applicant_total_outstanding", "applicant_foir", "applicant_ltv", "status", "rejection_reason", "approved_date"],
       row_count: ${stats.loan_applications},
     },
     {

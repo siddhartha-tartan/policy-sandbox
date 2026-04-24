@@ -7,6 +7,18 @@
 
 import { LAP_DB } from "../../../mock/lapDatabase";
 import { ChartConfig } from "./atom";
+import {
+  applyPolicyChange,
+  BASELINE_POLICY,
+  formatPolicyValue,
+  getPrimaryFailureLabel,
+  parsePolicyScenario,
+  PolicyChange,
+  PolicySnapshot,
+  simulatePolicy,
+  UnderwritingPolicy,
+  evaluatePolicy,
+} from "./policyEngine";
 
 export interface QueryResult {
   /** Conversational reply shown in the chat bubble */
@@ -20,6 +32,11 @@ export interface QueryResult {
   chart_config?: ChartConfig;
 }
 
+export interface QueryHistoryItem {
+  text: string;
+  executed_at_ms: number;
+}
+
 function toPandasFormat(rows: Record<string, unknown>[]): Record<string, Record<string, unknown>> {
   if (rows.length === 0) return {};
   const columns = Object.keys(rows[0]);
@@ -31,6 +48,187 @@ function toPandasFormat(rows: Record<string, unknown>[]): Record<string, Record<
     });
   });
   return df;
+}
+
+function formatPercent(value: number, decimals = 1): string {
+  return `${value.toFixed(decimals)}%`;
+}
+
+function formatCurrency(value: number): string {
+  return `Rs ${Math.round(value).toLocaleString("en-IN")}`;
+}
+
+function getPolicySnapshots(): PolicySnapshot[] {
+  return LAP_DB.loan_applications.map((application) => ({
+    application_id: application.application_id,
+    age_years: application.applicant_age_years,
+    annual_income: application.applicant_annual_income,
+    employment_tenure_years: application.applicant_employment_tenure_years,
+    bureau_score: application.applicant_bureau_score,
+    inquiries_last_6m: application.applicant_inquiries_last_6m,
+    total_outstanding: application.applicant_total_outstanding,
+    foir: application.applicant_foir,
+    ltv: application.applicant_ltv,
+  }));
+}
+
+function getTopRejectionReason(
+  applications: PolicySnapshot[],
+  policy: UnderwritingPolicy
+): { label: string; count: number } {
+  const rejectionMix: Record<string, number> = {};
+
+  applications.forEach((application) => {
+    const evaluation = evaluatePolicy(application, policy);
+    if (evaluation.eligible) return;
+
+    const label = getPrimaryFailureLabel(evaluation) || "Other";
+    rejectionMix[label] = (rejectionMix[label] || 0) + 1;
+  });
+
+  const [label, count] =
+    Object.entries(rejectionMix).sort(([, a], [, b]) => b - a)[0] || [];
+
+  return {
+    label: label || "None",
+    count: count || 0,
+  };
+}
+
+function resolveScenarioChange(
+  query: string,
+  previousChange?: PolicyChange
+): PolicyChange | null {
+  return parsePolicyScenario(query, BASELINE_POLICY, {
+    fallbackField: previousChange?.field,
+    fallbackOldValue: previousChange?.newValue,
+  });
+}
+
+function getLastScenarioChange(
+  queryHistory: QueryHistoryItem[]
+): PolicyChange | undefined {
+  let lastChange: PolicyChange | undefined;
+
+  [...queryHistory]
+    .sort((a, b) => a.executed_at_ms - b.executed_at_ms)
+    .forEach((entry) => {
+      const resolved = resolveScenarioChange(entry.text, lastChange);
+      if (resolved) {
+        lastChange = resolved;
+      }
+    });
+
+  return lastChange;
+}
+
+function buildPolicySimulationResult(
+  query: string,
+  queryHistory: QueryHistoryItem[] = []
+): QueryResult | null {
+  const previousChange = getLastScenarioChange(queryHistory);
+  const change = resolveScenarioChange(query, previousChange);
+
+  if (!change) return null;
+
+  const snapshots = getPolicySnapshots();
+  const comparisonPolicy =
+    change.oldValue === BASELINE_POLICY[change.field]
+      ? BASELINE_POLICY
+      : {
+          ...BASELINE_POLICY,
+          [change.field]: change.oldValue,
+        };
+  const revisedPolicy = applyPolicyChange(comparisonPolicy, change);
+  const simulation = simulatePolicy(snapshots, revisedPolicy, comparisonPolicy);
+  const baselineTopReason = getTopRejectionReason(snapshots, comparisonPolicy);
+  const revisedTopReason = getTopRejectionReason(snapshots, revisedPolicy);
+  const baselineValue = comparisonPolicy[change.field];
+
+  const rows = [
+    {
+      scenario: "Baseline",
+      financed_applicants: simulation.baseline_financed,
+      financed_rate: formatPercent(
+        (simulation.baseline_financed / simulation.total_applicants) * 100
+      ),
+      top_rejection_reason: baselineTopReason.label,
+      top_rejection_count: baselineTopReason.count,
+    },
+    {
+      scenario: "Revised",
+      financed_applicants: simulation.revised_financed,
+      financed_rate: formatPercent(
+        (simulation.revised_financed / simulation.total_applicants) * 100
+      ),
+      top_rejection_reason: revisedTopReason.label,
+      top_rejection_count: revisedTopReason.count,
+    },
+  ];
+
+  const direction =
+    simulation.delta_count > 0
+      ? "increases"
+      : simulation.delta_count < 0
+      ? "reduces"
+      : "keeps";
+  const absoluteDelta = Math.abs(simulation.delta_count);
+  const deltaText =
+    simulation.delta_count === 0
+      ? "with no net change in financed applicants."
+      : `${direction} financed applicants by ${absoluteDelta} (${formatPercent(
+          Math.abs(simulation.delta_pct)
+        )}).`;
+
+  return {
+    message: `${change.label} changing from ${formatPolicyValue(
+      change.field,
+      baselineValue
+    )} to ${formatPolicyValue(change.field, change.newValue)} ${deltaText}`,
+    title: "Policy Impact Simulation",
+    sql_query: `-- Counterfactual policy simulation for: "${query}"
+-- Baseline policy threshold: ${change.label} = ${formatPolicyValue(
+      change.field,
+      baselineValue
+    )}
+-- Revised policy threshold: ${change.label} = ${formatPolicyValue(
+      change.field,
+      change.newValue
+    )}
+
+WITH baseline_policy AS (
+  SELECT ${comparisonPolicy.min_age_years} AS min_age_years,
+         ${comparisonPolicy.max_age_years} AS max_age_years,
+         ${comparisonPolicy.min_annual_income} AS min_annual_income,
+         ${comparisonPolicy.min_employment_tenure_years} AS min_employment_tenure_years,
+         ${comparisonPolicy.min_bureau_score} AS min_bureau_score,
+         ${comparisonPolicy.max_inquiries_last_6m} AS max_inquiries_last_6m,
+         ${comparisonPolicy.max_total_outstanding} AS max_total_outstanding
+),
+revised_policy AS (
+  SELECT ${revisedPolicy.min_age_years} AS min_age_years,
+         ${revisedPolicy.max_age_years} AS max_age_years,
+         ${revisedPolicy.min_annual_income} AS min_annual_income,
+         ${revisedPolicy.min_employment_tenure_years} AS min_employment_tenure_years,
+         ${revisedPolicy.min_bureau_score} AS min_bureau_score,
+         ${revisedPolicy.max_inquiries_last_6m} AS max_inquiries_last_6m,
+         ${revisedPolicy.max_total_outstanding} AS max_total_outstanding
+)
+SELECT scenario, financed_applicants, financed_rate
+FROM policy_simulation_results;`,
+    result: toPandasFormat(rows),
+    insights:
+      simulation.delta_count >= 0
+        ? `${simulation.newly_financed} applicants become newly financeable under the revised policy.`
+        : `${simulation.no_longer_financed} applicants fall out of policy under the revised threshold.`,
+    chart_config: {
+      type: "bar",
+      title: "Baseline vs Revised Financed Applicants",
+      x_axis: "scenario",
+      y_axis: "financed_applicants",
+      color_palette: ["#3762DD", "#34C759"],
+    },
+  };
 }
 
 type QueryMatcher = {
@@ -62,8 +260,21 @@ const matchers: QueryMatcher[] = [
           avg_ticket_size: Math.round(data.amount / data.count),
         }));
 
+      const latestRow = rows[rows.length - 1];
+      const peakRow = [...rows].sort(
+        (a, b) => Number(b.total_amount) - Number(a.total_amount)
+      )[0];
+      const previousRow = rows.length > 1 ? rows[rows.length - 2] : null;
+      const trendPct =
+        previousRow && Number(previousRow.total_amount) > 0
+          ? (((Number(latestRow.total_amount) - Number(previousRow.total_amount)) /
+              Number(previousRow.total_amount)) *
+              100).toFixed(1)
+          : null;
+
       return {
-        message: "Here's the month-wise disbursement data. Each row shows the number of disbursements, total amount disbursed, and average ticket size for that month.",
+        message:
+          "Here is the monthly disbursement trend based on actual booked disbursements. It shows both disbursed amount and volume by month, which is the right lens for a policy manager tracking realized portfolio growth.",
         title: "Monthly Disbursement Trend",
         sql_query: `SELECT
   DATE_FORMAT(disbursement_date, '%Y-%m') AS month,
@@ -74,7 +285,24 @@ FROM disbursements
 GROUP BY DATE_FORMAT(disbursement_date, '%Y-%m')
 ORDER BY month;`,
         result: toPandasFormat(rows),
-        chart_config: { type: "bar", title: "Monthly Disbursement Volume", x_axis: "month", y_axis: "total_amount", y_axis_secondary: "disbursement_count" },
+        insights: `Peak booked disbursement was ${formatCurrency(
+          Number(peakRow.total_amount)
+        )} in ${String(peakRow.month)}. Latest month ${String(
+          latestRow.month
+        )} recorded ${formatCurrency(Number(latestRow.total_amount))} across ${
+          latestRow.disbursement_count
+        } disbursements${
+          trendPct && previousRow
+            ? `, a ${trendPct}% change versus ${String(previousRow.month)}.`
+            : "."
+        }`,
+        chart_config: {
+          type: "line",
+          title: "Monthly Disbursed Amount and Volume",
+          x_axis: "month",
+          y_axis: "total_amount",
+          y_axis_secondary: "disbursement_count",
+        },
       };
     },
   },
@@ -861,7 +1089,15 @@ LIMIT 30;`,
   };
 }
 
-export function executeQuery(userQuery: string): QueryResult {
+export function executeQuery(
+  userQuery: string,
+  queryHistory: QueryHistoryItem[] = []
+): QueryResult {
+  const simulationResult = buildPolicySimulationResult(userQuery, queryHistory);
+  if (simulationResult) {
+    return simulationResult;
+  }
+
   for (const matcher of matchers) {
     for (const pattern of matcher.patterns) {
       if (pattern.test(userQuery)) {
